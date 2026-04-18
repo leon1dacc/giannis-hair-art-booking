@@ -1,29 +1,17 @@
-import { Scissors, Palette, Sparkles, Wand2 } from "lucide-react";
+import { Scissors, Palette } from "lucide-react";
 
 const services = [
   {
     icon: Scissors,
     title: "Κούρεμα",
     desc: "Γυναικείο & ανδρικό κούρεμα προσαρμοσμένο στο πρόσωπο και το στυλ σου.",
-    price: "από 15€",
+    price: "10€",
   },
   {
     icon: Palette,
     title: "Βαφή Μαλλιών",
     desc: "Επαγγελματικές βαφές με προϊόντα υψηλής ποιότητας για λαμπερό αποτέλεσμα.",
-    price: "από 30€",
-  },
-  {
-    icon: Sparkles,
-    title: "Ανταύγειες & Μεσέ",
-    desc: "Τεχνικές balayage, ombre και κλασικές ανταύγειες για φυσικό φως.",
-    price: "από 50€",
-  },
-  {
-    icon: Wand2,
-    title: "Θεραπείες & Χτενίσματα",
-    desc: "Επανόρθωση, λάμψη, χτενίσματα για κάθε περίσταση και ειδικές εκδηλώσεις.",
-    price: "από 20€",
+    price: "20€",
   },
 ];
 
@@ -41,7 +29,7 @@ export function Services() {
           </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {services.map((s, i) => (
             <div
               key={s.title}

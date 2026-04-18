@@ -22,7 +22,7 @@ export function Hero() {
             <span className="text-foreground">Hair Art</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-md animate-fade-up delay-200">
-            Κομμωτική & βαφή μαλλιών με μεράκι, εμπειρία και προσοχή στη λεπτομέρεια. Το στυλ σου,
+            Κομμωτική & βαφή μαλλιών με αγάπη, εμπειρία και προσοχή στη λεπτομέρεια. Το στυλ σου,
             επανασχεδιασμένο.
           </p>
           <div className="flex flex-wrap gap-4 animate-fade-up delay-300">
@@ -49,7 +49,7 @@ export function Hero() {
             className="relative rounded-3xl shadow-elegant w-full h-[500px] object-cover"
           />
           <div className="absolute -bottom-6 -left-6 bg-card border border-border rounded-2xl p-4 shadow-gold">
-            <div className="text-3xl font-serif text-gradient-gold">15+</div>
+            <div className="text-3xl font-serif text-gradient-gold">10+</div>
             <div className="text-xs text-muted-foreground uppercase tracking-wider">
               Χρόνια Εμπειρίας
             </div>
