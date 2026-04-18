@@ -31,7 +31,7 @@ export function About() {
           </h2>
           <p className="text-muted-foreground leading-relaxed">
             Στο <strong className="text-foreground">Γιάννης Hair Art</strong>, στο Ίλιον, πιστεύουμε
-            ότι κάθε κούρεμα και κάθε βαφή είναι μια προσωπική ιστορία. Με πάνω από 15 χρόνια
+            ότι κάθε κούρεμα και κάθε βαφή είναι μια προσωπική ιστορία. Με πάνω από 10 χρόνια
             εμπειρίας, συνδυάζουμε σύγχρονες τεχνικές με κλασική φροντίδα για να αναδείξουμε τη
             φυσική σου ομορφιά.
           </p>
@@ -42,7 +42,7 @@ export function About() {
           </p>
           <div className="grid grid-cols-3 gap-4 pt-4">
             <div>
-              <div className="text-3xl font-serif text-gradient-gold">15+</div>
+              <div className="text-3xl font-serif text-gradient-gold">10+</div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider">Χρόνια</div>
             </div>
             <div>
@@ -51,7 +51,7 @@ export function About() {
             </div>
             <div>
               <div className="text-3xl font-serif text-gradient-gold">100%</div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">Μεράκι</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider">Αφοσίωση</div>
             </div>
           </div>
         </div>
