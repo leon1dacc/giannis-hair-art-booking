@@ -29,14 +29,18 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Γιάννης | Hair Art" },
+      { name: "description", content: "Κούρεμα, Βαφές μαλλιών, Περισσότερες γυναικείες και αντρικές υπηρεσίες" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Γιάννης | Hair Art" },
+      { property: "og:description", content: "Κούρεμα, Βαφές μαλλιών, Περισσότερες γυναικείες και αντρικές υπηρεσίες" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Γιάννης | Hair Art" },
+      { name: "twitter:description", content: "Κούρεμα, Βαφές μαλλιών, Περισσότερες γυναικείες και αντρικές υπηρεσίες" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/lfPI7ggAfcbLiWvbl40JboRuXt43/social-images/social-1776541319755-2023-03-16.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/lfPI7ggAfcbLiWvbl40JboRuXt43/social-images/social-1776541319755-2023-03-16.webp" },
     ],
     links: [
       {
