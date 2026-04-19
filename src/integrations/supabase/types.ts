@@ -14,13 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_settings: {
+        Row: {
+          id: number
+          pin_hash: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          pin_hash: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          pin_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      appointments: {
+        Row: {
+          appointment_date: string
+          appointment_time: string
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          service: string
+          status: string
+        }
+        Insert: {
+          appointment_date: string
+          appointment_time: string
+          created_at?: string
+          customer_name: string
+          customer_phone: string
+          id?: string
+          service: string
+          status?: string
+        }
+        Update: {
+          appointment_date?: string
+          appointment_time?: string
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string
+          id?: string
+          service?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_cancel_appointment: {
+        Args: { _id: string; _pin: string }
+        Returns: undefined
+      }
+      admin_change_pin: {
+        Args: { _new_pin: string; _old_pin: string }
+        Returns: undefined
+      }
+      admin_list_appointments: {
+        Args: { _pin: string }
+        Returns: {
+          appointment_date: string
+          appointment_time: string
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          service: string
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "appointments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_booked_slots: {
+        Args: { _date: string }
+        Returns: {
+          appointment_time: string
+        }[]
+      }
+      verify_admin_pin: { Args: { _pin: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
