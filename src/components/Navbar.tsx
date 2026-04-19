@@ -6,6 +6,7 @@ const links = [
   { href: "#home", label: "Αρχική" },
   { href: "#services", label: "Υπηρεσίες" },
   { href: "#about", label: "Σχετικά" },
+  { href: "#testimonials", label: "Κριτικές" },
   { href: "#booking", label: "Ραντεβού" },
   { href: "#contact", label: "Επικοινωνία" },
 ];

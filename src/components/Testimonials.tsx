@@ -20,7 +20,7 @@ const testimonials = [
 
 export function Testimonials() {
   return (
-    <section className="py-24 bg-background">
+    <section id="testimonials" className="py-24 bg-background">
       <div className="container mx-auto px-6">
         <div className="text-center max-w-2xl mx-auto mb-14 animate-fade-up">
           <p className="text-xs tracking-[0.4em] uppercase text-primary mb-3">Κριτικές</p>
