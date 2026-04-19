@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Clock, User, Phone, Check, Scissors, Loader2 } from "lucide-react";
+import { Calendar, Clock, User, Phone, Check, Scissors, Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,11 +8,15 @@ import { generateSlots, isClosed } from "@/lib/schedule";
 const services = ["Κούρεμα", "Βαφή Μαλλιών"];
 
 const bookingSchema = z.object({
-  name: z.string().trim().min(2, "Όνομα πολύ μικρό").max(100),
-  phone: z.string().trim().regex(/^[0-9+\s()-]{5,20}$/, "Μη έγκυρο τηλέφωνο"),
+  name: z.string().trim().min(2, "Το όνομα είναι πολύ μικρό").max(100),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\d{10}$/, "Το τηλέφωνο πρέπει να είναι 10 ψηφία"),
+  email: z.string().trim().email("Μη έγκυρο email").max(255),
   service: z.enum(["Κούρεμα", "Βαφή Μαλλιών"]),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  time: z.string().regex(/^\d{2}:\d{2}$/),
+  time: z.string().regex(/^\d{2}:\d{2}$/, "Επίλεξε ώρα"),
 });
 
 export function Booking() {
@@ -23,6 +27,7 @@ export function Booking() {
   const [form, setForm] = useState({
     name: "",
     phone: "",
+    email: "",
     service: services[0],
     date: "",
     time: "",
