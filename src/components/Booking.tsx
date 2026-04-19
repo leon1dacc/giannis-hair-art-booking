@@ -111,9 +111,22 @@ export function Booking() {
     }
 
     setSubmitting(true);
+
+    // Get visitor IP (best-effort, used to limit bookings per IP per day)
+    let ip = "";
+    try {
+      const ipResp = await fetch("https://api.ipify.org?format=json");
+      const ipJson = await ipResp.json();
+      ip = ipJson.ip || "";
+    } catch {
+      // ignore
+    }
+
     const { error } = await supabase.from("appointments").insert({
       customer_name: form.name.trim(),
       customer_phone: form.phone.trim(),
+      customer_email: form.email.trim(),
+      customer_ip: ip || null,
       service: form.service,
       appointment_date: form.date,
       appointment_time: form.time,
@@ -123,10 +136,15 @@ export function Booking() {
     if (error) {
       if (error.code === "23505") {
         toast.error("Αυτή η ώρα μόλις κλείστηκε. Παρακαλώ διάλεξε άλλη.");
-        // refresh slots
         const { data } = await supabase.rpc("get_booked_slots", { _date: form.date });
         setBookedTimes((data || []).map((r: { appointment_time: string }) => r.appointment_time));
         setForm((f) => ({ ...f, time: "" }));
+      } else if (
+        error.code === "23514" ||
+        error.message?.includes("2 ραντεβού") ||
+        error.message?.toLowerCase().includes("check_violation")
+      ) {
+        toast.error("Έχεις ήδη κλείσει 2 ραντεβού για αυτή την ημέρα.");
       } else {
         toast.error("Σφάλμα κατά την κράτηση. Δοκίμασε ξανά.");
         console.error(error);
@@ -134,7 +152,7 @@ export function Booking() {
       return;
     }
 
-    // Fire-and-forget admin notification
+    // Fire-and-forget: notify admin + send confirmation email to customer
     supabase.functions
       .invoke("notify-admin", {
         body: {
@@ -143,12 +161,13 @@ export function Booking() {
           service: form.service,
           date: form.date,
           time: form.time,
+          customerEmail: form.email.trim(),
         },
       })
       .catch((e) => console.warn("notify-admin failed", e));
 
     setSubmitted(true);
-    toast.success("Το ραντεβού σου κλείστηκε επιτυχώς! 🎉");
+    toast.success("Το ραντεβού σου κλείστηκε! Θα λάβεις email επιβεβαίωσης. 🎉");
   };
 
   return (
@@ -178,12 +197,12 @@ export function Booking() {
                 Σε περιμένουμε για <strong className="text-primary">{form.service}</strong> στις{" "}
                 <strong className="text-primary">{form.date}</strong> στις{" "}
                 <strong className="text-primary">{form.time}</strong>.<br />
-                Θα σε καλέσουμε στο {form.phone} για επιβεβαίωση.
+                Σου στείλαμε email επιβεβαίωσης στο {form.email}.
               </p>
               <button
                 onClick={() => {
                   setSubmitted(false);
-                  setForm({ name: "", phone: "", service: services[0], date: "", time: "" });
+                  setForm({ name: "", phone: "", email: "", service: services[0], date: "", time: "" });
                 }}
                 className="text-primary hover:underline story-link"
               >
@@ -203,14 +222,28 @@ export function Booking() {
                 />
               </Field>
 
-              <Field icon={Phone} label="Τηλέφωνο">
+              <Field icon={Phone} label="Τηλέφωνο (10 ψηφία)">
                 <input
                   type="tel"
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })
+                  }
                   className="w-full bg-input border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary transition-smooth"
                   placeholder="69XXXXXXXX"
-                  maxLength={20}
+                  maxLength={10}
+                  inputMode="numeric"
+                />
+              </Field>
+
+              <Field icon={Mail} label="Email" full>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full bg-input border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary transition-smooth"
+                  placeholder="you@example.com"
+                  maxLength={255}
                 />
               </Field>
 
