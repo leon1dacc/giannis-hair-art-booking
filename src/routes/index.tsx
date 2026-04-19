@@ -6,6 +6,8 @@ import { About } from "@/components/About";
 import { Booking } from "@/components/Booking";
 import { Contact } from "@/components/Contact";
 import { Footer } from "@/components/Footer";
+import { Testimonials } from "@/components/Testimonials";
+import { HiddenGame } from "@/components/HiddenGame";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/")({
@@ -41,10 +43,12 @@ function Index() {
         <Hero />
         <Services />
         <About />
+        <Testimonials />
         <Booking />
         <Contact />
       </main>
       <Footer />
+      <HiddenGame />
       <Toaster />
     </div>
   );

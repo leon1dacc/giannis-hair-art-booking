@@ -1,41 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Clock, User, Phone, Check, Scissors } from "lucide-react";
+import { Calendar, Clock, User, Phone, Check, Scissors, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { generateSlots, isClosed } from "@/lib/schedule";
 
 const services = ["Κούρεμα", "Βαφή Μαλλιών"];
 
-// Schedule per weekday (0 = Sunday ... 6 = Saturday)
-// Each entry is an array of "HH:MM" slots (hourly).
-const SCHEDULE: Record<number, string[]> = {
-  0: [], // Κυριακή — Κλειστά
-  1: [], // Δευτέρα — Κλειστά
-  2: ["09:00", "10:00", "11:00", "12:00", "13:00", "17:00", "18:00", "19:00", "20:00"], // Τρίτη
-  3: ["09:00", "10:00", "11:00", "12:00", "13:00"], // Τετάρτη
-  4: ["09:00", "10:00", "11:00", "12:00", "13:00", "17:00", "18:00", "19:00", "20:00"], // Πέμπτη
-  5: ["09:00", "10:00", "11:00", "12:00", "13:00", "17:00", "18:00", "19:00", "20:00"], // Παρασκευή
-  6: ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"], // Σάββατο
-};
-
-const STORAGE_KEY = "yannis-booked-slots";
-
-function getBookedSlots(): Record<string, string[]> {
-  if (typeof window === "undefined") return {};
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function saveBookedSlot(date: string, time: string) {
-  const all = getBookedSlots();
-  all[date] = [...(all[date] || []), time];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-}
+const bookingSchema = z.object({
+  name: z.string().trim().min(2, "Όνομα πολύ μικρό").max(100),
+  phone: z.string().trim().regex(/^[0-9+\s()-]{5,20}$/, "Μη έγκυρο τηλέφωνο"),
+  service: z.enum(["Κούρεμα", "Βαφή Μαλλιών"]),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+});
 
 export function Booking() {
   const [submitted, setSubmitted] = useState(false);
-  const [booked, setBooked] = useState<Record<string, string[]>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -44,52 +28,122 @@ export function Booking() {
     time: "",
   });
 
-  useEffect(() => {
-    setBooked(getBookedSlots());
-  }, []);
-
   const today = new Date().toISOString().split("T")[0];
 
-  // Compute available time slots for the chosen date
-  const availableTimes = useMemo(() => {
-    if (!form.date) return [];
-    // Parse YYYY-MM-DD as local date
+  const dayOfWeek = useMemo(() => {
+    if (!form.date) return -1;
     const [y, m, d] = form.date.split("-").map(Number);
-    const dayOfWeek = new Date(y, m - 1, d).getDay();
-    const slots = SCHEDULE[dayOfWeek] || [];
-    const taken = booked[form.date] || [];
-    return slots.filter((s) => !taken.includes(s));
-  }, [form.date, booked]);
+    return new Date(y, m - 1, d).getDay();
+  }, [form.date]);
 
-  const isClosedDay = useMemo(() => {
-    if (!form.date) return false;
-    const [y, m, d] = form.date.split("-").map(Number);
-    const dayOfWeek = new Date(y, m - 1, d).getDay();
-    return (SCHEDULE[dayOfWeek] || []).length === 0;
+  const closed = form.date ? isClosed(dayOfWeek) : false;
+
+  const availableTimes = useMemo(() => {
+    if (!form.date || closed) return [];
+    return generateSlots(dayOfWeek).filter((s) => !bookedTimes.includes(s));
+  }, [form.date, dayOfWeek, closed, bookedTimes]);
+
+  // Fetch booked slots whenever date changes
+  useEffect(() => {
+    if (!form.date || closed) {
+      setBookedTimes([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingSlots(true);
+    supabase
+      .rpc("get_booked_slots", { _date: form.date })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error(error);
+          setBookedTimes([]);
+        } else {
+          setBookedTimes((data || []).map((r: { appointment_time: string }) => r.appointment_time));
+        }
+        setLoadingSlots(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.date, closed]);
+
+  // Realtime subscription so users see slot disappear instantly when someone else books
+  useEffect(() => {
+    const channel = supabase
+      .channel("appointments-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "appointments" },
+        () => {
+          if (form.date) {
+            supabase.rpc("get_booked_slots", { _date: form.date }).then(({ data }) => {
+              setBookedTimes((data || []).map((r: { appointment_time: string }) => r.appointment_time));
+            });
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [form.date]);
 
   const handleDateChange = (date: string) => {
     setForm((f) => ({ ...f, date, time: "" }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.phone || !form.date) {
-      toast.error("Παρακαλώ συμπλήρωσε όλα τα πεδία");
+    const result = bookingSchema.safeParse(form);
+    if (!result.success) {
+      toast.error(result.error.issues[0].message);
       return;
     }
-    if (isClosedDay) {
+    if (closed) {
       toast.error("Το κατάστημα είναι κλειστό αυτή την ημέρα");
       return;
     }
-    if (!form.time) {
-      toast.error("Παρακαλώ επίλεξε ώρα");
+
+    setSubmitting(true);
+    const { error } = await supabase.from("appointments").insert({
+      customer_name: form.name.trim(),
+      customer_phone: form.phone.trim(),
+      service: form.service,
+      appointment_date: form.date,
+      appointment_time: form.time,
+    });
+    setSubmitting(false);
+
+    if (error) {
+      if (error.code === "23505") {
+        toast.error("Αυτή η ώρα μόλις κλείστηκε. Παρακαλώ διάλεξε άλλη.");
+        // refresh slots
+        const { data } = await supabase.rpc("get_booked_slots", { _date: form.date });
+        setBookedTimes((data || []).map((r: { appointment_time: string }) => r.appointment_time));
+        setForm((f) => ({ ...f, time: "" }));
+      } else {
+        toast.error("Σφάλμα κατά την κράτηση. Δοκίμασε ξανά.");
+        console.error(error);
+      }
       return;
     }
-    saveBookedSlot(form.date, form.time);
-    setBooked(getBookedSlots());
+
+    // Fire-and-forget admin notification
+    supabase.functions
+      .invoke("notify-admin", {
+        body: {
+          name: form.name,
+          phone: form.phone,
+          service: form.service,
+          date: form.date,
+          time: form.time,
+        },
+      })
+      .catch((e) => console.warn("notify-admin failed", e));
+
     setSubmitted(true);
-    toast.success("Το ραντεβού σου έκλεισε επιτυχώς!");
+    toast.success("Το ραντεβού σου κλείστηκε επιτυχώς! 🎉");
   };
 
   return (
@@ -101,7 +155,7 @@ export function Booking() {
             Κλείσε το <span className="text-gradient-gold">ραντεβού</span> σου
           </h2>
           <p className="text-muted-foreground">
-            Επίλεξε ημέρα και ώρα — βλέπεις μόνο τις διαθέσιμες ώρες του καταστήματος.
+            Επίλεξε ημέρα και ώρα — βλέπεις σε πραγματικό χρόνο μόνο τις διαθέσιμες ώρες.
           </p>
         </div>
 
@@ -111,7 +165,7 @@ export function Booking() {
               <div className="w-20 h-20 rounded-full bg-gradient-gold mx-auto flex items-center justify-center mb-6 animate-float">
                 <Check className="h-10 w-10 text-primary-foreground" />
               </div>
-              <h3 className="text-3xl font-serif mb-3">Το ραντεβού σου έκλεισε! 🎉</h3>
+              <h3 className="text-3xl font-serif mb-3">Το ραντεβού σου κλείστηκε! 🎉</h3>
               <p className="text-muted-foreground mb-2">
                 Σ' ευχαριστούμε <strong className="text-foreground">{form.name}</strong>!
               </p>
@@ -140,6 +194,7 @@ export function Booking() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full bg-input border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary transition-smooth"
                   placeholder="Το όνομά σου"
+                  maxLength={100}
                 />
               </Field>
 
@@ -150,6 +205,7 @@ export function Booking() {
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   className="w-full bg-input border border-border rounded-lg px-4 py-3 text-foreground focus:outline-none focus:border-primary transition-smooth"
                   placeholder="69XXXXXXXX"
+                  maxLength={20}
                 />
               </Field>
 
@@ -180,9 +236,13 @@ export function Booking() {
                   <div className="w-full bg-input border border-border rounded-lg px-4 py-3 text-muted-foreground text-sm">
                     Επίλεξε πρώτα ημερομηνία
                   </div>
-                ) : isClosedDay ? (
+                ) : closed ? (
                   <div className="w-full bg-input border border-destructive/40 rounded-lg px-4 py-3 text-destructive text-sm">
                     Κλειστά αυτή την ημέρα
+                  </div>
+                ) : loadingSlots ? (
+                  <div className="w-full bg-input border border-border rounded-lg px-4 py-3 text-muted-foreground text-sm flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Φόρτωση διαθέσιμων ωρών…
                   </div>
                 ) : availableTimes.length === 0 ? (
                   <div className="w-full bg-input border border-border rounded-lg px-4 py-3 text-muted-foreground text-sm">
@@ -206,9 +266,11 @@ export function Booking() {
 
               <button
                 type="submit"
-                className="md:col-span-2 mt-2 px-7 py-4 rounded-full bg-gradient-gold text-primary-foreground font-medium hover-lift transition-smooth"
+                disabled={submitting}
+                className="md:col-span-2 mt-2 px-7 py-4 rounded-full bg-gradient-gold text-primary-foreground font-medium hover-lift transition-smooth disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2"
               >
-                Επιβεβαίωση Ραντεβού
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting ? "Επιβεβαίωση…" : "Επιβεβαίωση Ραντεβού"}
               </button>
             </form>
           )}

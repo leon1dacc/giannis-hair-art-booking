@@ -1,0 +1,2 @@
+create policy "deny all direct access" on public.admin_settings for all to anon, authenticated using (false) with check (false);
+create policy "deny direct read" on public.appointments for select to anon, authenticated using (false);
