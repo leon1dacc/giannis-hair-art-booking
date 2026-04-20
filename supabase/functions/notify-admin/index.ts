@@ -16,6 +16,8 @@ interface BookingPayload {
   date: string;
   time: string;
   customerEmail?: string;
+  cancelToken?: string;
+  siteUrl?: string;
 }
 
 const escape = (s: string) =>
@@ -100,6 +102,9 @@ serve(async (req) => {
 
     let customerResult: any = null;
     if (body.customerEmail) {
+      const cancelUrl = body.cancelToken && body.siteUrl
+        ? `${body.siteUrl.replace(/\/$/, "")}/cancel?token=${body.cancelToken}`
+        : null;
       const customerHtml = `
         <div style="font-family:Arial,sans-serif;background:#f6f6f6;padding:20px">
           <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px;border:1px solid #e5e5e5">
@@ -116,8 +121,9 @@ serve(async (req) => {
             </table>
             <p style="color:#222;font-size:14px;margin:20px 0 8px">📍 Πετρουπόλεως 62, Ίλιον</p>
             <p style="color:#222;font-size:14px;margin:0 0 8px">📞 21 0262 7102</p>
+            ${cancelUrl ? `<div style="margin:24px 0;text-align:center"><a href="${cancelUrl}" style="display:inline-block;padding:12px 24px;background:#111;color:#fff;text-decoration:none;border-radius:8px;font-size:14px">Ακύρωση ραντεβού</a></div>` : ""}
             <hr style="border:none;border-top:1px solid #eee;margin:24px 0"/>
-            <p style="font-size:12px;color:#999;margin:0">Σε περίπτωση ακύρωσης, επικοινώνησε μαζί μας τηλεφωνικά.</p>
+            <p style="font-size:12px;color:#999;margin:0">Αν δεν μπορέσεις να έρθεις, μπορείς να ακυρώσεις από το παραπάνω κουμπί ή να μας πάρεις τηλέφωνο.</p>
           </div>
         </div>
       `;
