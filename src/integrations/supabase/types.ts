@@ -36,38 +36,71 @@ export type Database = {
         Row: {
           appointment_date: string
           appointment_time: string
+          cancel_token: string
           created_at: string
           customer_email: string | null
           customer_ip: string | null
           customer_name: string
           customer_phone: string
           id: string
+          reminder_24h_sent: boolean
+          reminder_2h_sent: boolean
           service: string
           status: string
         }
         Insert: {
           appointment_date: string
           appointment_time: string
+          cancel_token?: string
           created_at?: string
           customer_email?: string | null
           customer_ip?: string | null
           customer_name: string
           customer_phone: string
           id?: string
+          reminder_24h_sent?: boolean
+          reminder_2h_sent?: boolean
           service: string
           status?: string
         }
         Update: {
           appointment_date?: string
           appointment_time?: string
+          cancel_token?: string
           created_at?: string
           customer_email?: string | null
           customer_ip?: string | null
           customer_name?: string
           customer_phone?: string
           id?: string
+          reminder_24h_sent?: boolean
+          reminder_2h_sent?: boolean
           service?: string
           status?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          booking_closed: boolean
+          closure_message: string
+          id: number
+          site_closed: boolean
+          updated_at: string
+        }
+        Insert: {
+          booking_closed?: boolean
+          closure_message?: string
+          id?: number
+          site_closed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          booking_closed?: boolean
+          closure_message?: string
+          id?: number
+          site_closed?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
@@ -84,17 +117,25 @@ export type Database = {
         Args: { _new_pin: string; _old_pin: string }
         Returns: undefined
       }
+      admin_cleanup_cancelled: { Args: never; Returns: number }
+      admin_delete_appointment: {
+        Args: { _id: string; _pin: string }
+        Returns: undefined
+      }
       admin_list_appointments: {
         Args: { _pin: string }
         Returns: {
           appointment_date: string
           appointment_time: string
+          cancel_token: string
           created_at: string
           customer_email: string | null
           customer_ip: string | null
           customer_name: string
           customer_phone: string
           id: string
+          reminder_24h_sent: boolean
+          reminder_2h_sent: boolean
           service: string
           status: string
         }[]
@@ -105,11 +146,62 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_set_settings: {
+        Args: {
+          _booking_closed: boolean
+          _closure_message: string
+          _pin: string
+          _site_closed: boolean
+        }
+        Returns: undefined
+      }
+      book_appointment: {
+        Args: {
+          _date: string
+          _email: string
+          _ip: string
+          _name: string
+          _phone: string
+          _service: string
+          _time: string
+        }
+        Returns: {
+          out_id: string
+          out_token: string
+        }[]
+      }
+      cancel_by_token: {
+        Args: { _token: string }
+        Returns: {
+          message: string
+          out_date: string
+          out_name: string
+          out_time: string
+          success: boolean
+        }[]
+      }
       get_booked_slots: {
         Args: { _date: string }
         Returns: {
           appointment_time: string
         }[]
+      }
+      get_due_reminders: {
+        Args: { _kind: string }
+        Returns: {
+          out_date: string
+          out_email: string
+          out_id: string
+          out_name: string
+          out_phone: string
+          out_service: string
+          out_time: string
+          out_token: string
+        }[]
+      }
+      mark_reminder_sent: {
+        Args: { _id: string; _kind: string }
+        Returns: undefined
       }
       verify_admin_pin: { Args: { _pin: string }; Returns: boolean }
     }
