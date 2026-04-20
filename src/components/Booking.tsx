@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Clock, User, Phone, Check, Scissors, Loader2, Mail } from "lucide-react";
+import { Calendar, Clock, User, Phone, Check, Scissors, Loader2, Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,8 @@ export function Booking() {
   const [submitting, setSubmitting] = useState(false);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [bookingClosed, setBookingClosed] = useState(false);
+  const [closureMessage, setClosureMessage] = useState("");
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -34,6 +36,21 @@ export function Booking() {
   });
 
   const today = new Date().toISOString().split("T")[0];
+
+  // Load site settings to know if booking is closed
+  useEffect(() => {
+    supabase
+      .from("site_settings")
+      .select("booking_closed, site_closed, closure_message")
+      .eq("id", 1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setBookingClosed(!!data.booking_closed || !!data.site_closed);
+          setClosureMessage(data.closure_message || "");
+        }
+      });
+  }, []);
 
   const dayOfWeek = useMemo(() => {
     if (!form.date) return -1;
@@ -122,35 +139,37 @@ export function Booking() {
       // ignore
     }
 
-    const { error } = await supabase.from("appointments").insert({
-      customer_name: form.name.trim(),
-      customer_phone: form.phone.trim(),
-      customer_email: form.email.trim(),
-      customer_ip: ip || null,
-      service: form.service,
-      appointment_date: form.date,
-      appointment_time: form.time,
+    const { data: bookData, error } = await supabase.rpc("book_appointment", {
+      _name: form.name.trim(),
+      _phone: form.phone.trim(),
+      _email: form.email.trim(),
+      _service: form.service,
+      _date: form.date,
+      _time: form.time,
+      _ip: ip || "",
     });
     setSubmitting(false);
 
     if (error) {
-      if (error.code === "23505") {
+      const msg = error.message || "";
+      if (msg.includes("slot_taken") || msg.includes("Αυτή η ώρα")) {
         toast.error("Αυτή η ώρα μόλις κλείστηκε. Παρακαλώ διάλεξε άλλη.");
         const { data } = await supabase.rpc("get_booked_slots", { _date: form.date });
         setBookedTimes((data || []).map((r: { appointment_time: string }) => r.appointment_time));
         setForm((f) => ({ ...f, time: "" }));
-      } else if (
-        error.code === "23514" ||
-        error.message?.includes("2 ραντεβού") ||
-        error.message?.toLowerCase().includes("check_violation")
-      ) {
+      } else if (msg.includes("limit_reached") || msg.includes("2 ραντεβού")) {
         toast.error("Έχεις ήδη κλείσει 2 ραντεβού για αυτή την ημέρα.");
+      } else if (msg.includes("booking_closed") || msg.includes("προσωρινά κλειστές")) {
+        toast.error("Οι κρατήσεις είναι προσωρινά κλειστές. Δοκίμασε αργότερα.");
+        setBookingClosed(true);
       } else {
         toast.error("Σφάλμα κατά την κράτηση. Δοκίμασε ξανά.");
         console.error(error);
       }
       return;
     }
+
+    const cancelToken = (bookData as Array<{ out_id: string; out_token: string }>)?.[0]?.out_token;
 
     // Fire-and-forget: notify admin + send confirmation email to customer
     supabase.functions
@@ -162,6 +181,8 @@ export function Booking() {
           date: form.date,
           time: form.time,
           customerEmail: form.email.trim(),
+          cancelToken,
+          siteUrl: window.location.origin,
         },
       })
       .catch((e) => console.warn("notify-admin failed", e));
@@ -184,7 +205,17 @@ export function Booking() {
         </div>
 
         <div className="max-w-3xl mx-auto bg-card border border-border rounded-3xl p-8 md:p-10 shadow-elegant animate-scale-in">
-          {submitted ? (
+          {bookingClosed ? (
+            <div className="text-center py-12 animate-fade-up">
+              <div className="w-20 h-20 rounded-full bg-card border border-border mx-auto flex items-center justify-center mb-6">
+                <Lock className="h-9 w-9 text-primary" />
+              </div>
+              <h3 className="text-2xl font-serif mb-3">Οι κρατήσεις είναι προσωρινά κλειστές</h3>
+              <p className="text-muted-foreground max-w-md mx-auto whitespace-pre-line">
+                {closureMessage || "Παρακαλώ δοκίμασε ξανά αργότερα. Για άμεση επικοινωνία, καλέστε στο 21 0262 7102."}
+              </p>
+            </div>
+          ) : submitted ? (
             <div className="text-center py-12 animate-fade-up">
               <div className="w-20 h-20 rounded-full bg-gradient-gold mx-auto flex items-center justify-center mb-6 animate-float">
                 <Check className="h-10 w-10 text-primary-foreground" />
